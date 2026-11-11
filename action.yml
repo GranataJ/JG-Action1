@@ -1,23 +1,55 @@
-description: Testing
-name: 2-Test Composite Action
+name: JG Random Number Generator
+description: Generate a random integer within an inclusive range.
+author: GranataJ
+inputs:
+  min:
+    description: Minimum value, inclusive (0-32767).
+    required: false
+    default: '1'
+  max:
+    description: Maximum value, inclusive (up to 32767).
+    required: false
+    default: '100'
+outputs:
+  generated-number:
+    description: The generated random integer.
+    value: ${{ steps.generate.outputs.generated-number }}
+runs:
+  using: composite
+  steps:
+    - id: generate
+      shell: bash
+      env:
+        INPUT_MIN: ${{ inputs.min }}
+        INPUT_MAX: ${{ inputs.max }}
+      run: |
+        if [[ ! "$INPUT_MIN" =~ ^[0-9]{1,5}$ ]]; then
+          echo "min must be an integer from 0 to 32767" >&2
+          exit 1
+        fi
+        if [[ ! "$INPUT_MAX" =~ ^[0-9]{1,5}$ ]]; then
+          echo "max must be an integer from 0 to 32767" >&2
+          exit 1
+        fi
 
-on:
-  workflow_dispatch:
+        min=$((10#$INPUT_MIN))
+        max=$((10#$INPUT_MAX))
+        if (( min > 32767 || max > 32767 )); then
+          echo "min and max must be no greater than 32767" >&2
+          exit 1
+        fi
+        if (( min > max )); then
+          echo "min must be less than or equal to max" >&2
+          exit 1
+        fi
 
+        range=$((max - min + 1))
+        limit=$((32768 / range * range))
+        while :; do
+          candidate=$RANDOM
+          if (( candidate < limit )); then
+            break
+          fi
+        done
 
-jobs:
-  run-custom-action:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out Repository
-        uses: actions/checkout@v4
-
-      - name: Call Random Generator Action
-        id: custom_rng
-        uses: ./.github/workflows/random-generator
-        with:
-          user-name: 'Bob'
-
-      - name: Use the returned random number
-        run: |
-          echo "The composite action successfully returned the number: ${{ steps.custom_rng.outputs.generated-number }}"
+        printf 'generated-number=%s\n' "$((candidate % range + min))" >> "$GITHUB_OUTPUT"
