@@ -1,0 +1,22 @@
+name: 2-Test Composite Action
+
+on:
+  workflow_dispatch:
+
+
+jobs:
+  run-custom-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Repository
+        uses: actions/checkout@v4
+
+      - name: Call Random Generator Action
+        id: custom_rng
+        uses: ./.github/workflows/random-generator
+        with:
+          user-name: 'Bob'
+
+      - name: Use the returned random number
+        run: |
+          echo "The composite action successfully returned the number: ${{ steps.custom_rng.outputs.generated-number }}"
